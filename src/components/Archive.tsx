@@ -1,0 +1,13 @@
+import { useMemo, useRef, useState } from 'react';
+import { createDraft, newId } from '../lib/draft';
+import { deleteArchive, loadArchive, saveArchive } from '../lib/storage';
+import type { Draft } from '../types';
+
+export function Archive({ onLoad }: { onLoad(draft: Draft): void }) {
+  const [items, setItems] = useState(loadArchive()); const [query, setQuery] = useState(''); const input = useRef<HTMLInputElement>(null);
+  const filtered = useMemo(() => items.filter((d) => `${d.title} ${d.topic} ${d.keywords.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [items, query]);
+  const remove = (id: string) => { if (!confirm('이 보관 글을 삭제할까요? 이미지 파일은 별도로 관리될 수 있습니다.')) return; deleteArchive(id); setItems(loadArchive()); };
+  const clone = (draft: Draft) => { const now = new Date().toISOString(); const next = { ...draft, id: newId(), title: `${draft.title || draft.topic} 복사본`, createdAt: now, updatedAt: now, status: '초안' as const }; saveArchive(next); setItems(loadArchive()); };
+  const importJson = async (file?: File) => { if (!file) return; try { const raw = JSON.parse(await file.text()); const draft = { ...createDraft(), ...raw, id: raw.id || newId(), schemaVersion: 1 } as Draft; if (!draft.topic) throw new Error(); saveArchive(draft); setItems(loadArchive()); } catch { alert('지원하지 않는 프로젝트 JSON입니다.'); } finally { if (input.current) input.current.value = ''; } };
+  return <main className="archive-page"><section className="card hero-card"><span className="eyebrow">ARCHIVE</span><h1>보관함</h1><p>브라우저의 localStorage에 저장됩니다. 다른 PC나 브라우저로 자동 동기화되지 않습니다.</p></section><section className="card"><div className="section-head"><input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="제목·주제·키워드 검색" aria-label="보관함 검색" /><label className="button secondary">프로젝트 JSON 가져오기<input ref={input} type="file" accept="application/json" hidden onChange={(e) => importJson(e.target.files?.[0])} /></label></div>{filtered.length ? <div className="archive-list">{filtered.map((draft) => <article className="archive-item" key={draft.id}><div><span className={`status ${draft.status === '완료' ? 'complete' : ''}`}>{draft.status}</span><h2>{draft.title || draft.topic}</h2><p>{draft.topic} · {new Date(draft.updatedAt).toLocaleString('ko-KR')} · {draft.article.length.toLocaleString()}자</p><div className="tag-line">{draft.keywords.map((k) => <span key={k}>#{k}</span>)}</div></div><div className="row wrap"><button onClick={() => onLoad(draft)}>불러오기</button><button className="secondary" onClick={() => clone(draft)}>복제</button><button className="danger" onClick={() => remove(draft.id)}>삭제</button></div></article>)}</div> : <div className="empty">저장된 글이 없습니다. 글쓰기 화면에서 ‘보관함에 저장’을 누르세요.</div>}</section></main>;
+}

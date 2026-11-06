@@ -1,0 +1,24 @@
+import { useEffect, useRef, useState } from 'react';
+import { deleteBlob, getBlob, putBlob } from '../lib/storage';
+import { newId } from '../lib/draft';
+import type { Draft, ImageAsset } from '../types';
+
+export function ImageManager({ draft, update }: { draft: Draft; update(p: Partial<Draft>): void }) {
+  const [urls, setUrls] = useState<Record<string, string>>({}); const svgRef = useRef<SVGSVGElement>(null);
+  useEffect(() => { let active = true; const created: string[] = []; Promise.all(draft.images.filter((i) => i.blobRef).map(async (image) => { const blob = await getBlob(image.blobRef!); if (blob) { const url = URL.createObjectURL(blob); created.push(url); if (active) setUrls((old) => ({ ...old, [image.id]: url })); } })).catch(() => {}); return () => { active = false; created.forEach(URL.revokeObjectURL); }; }, [draft.images]);
+  const upload = async (files: FileList | null) => {
+    if (!files) return; const file = files[0]; if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 8 * 1024 * 1024) return alert('PNG/JPG/WebP, 8MB 이하 파일만 업로드할 수 있습니다.');
+    const id = newId(); try { await putBlob(id, file); const image: ImageAsset = { id, kind: 'upload', caption: file.name, alt: `${draft.topic} 현장 사진`, sourceUrl: '', licenseNote: '사용자 업로드 · 사용 권리 직접 확인', blobRef: id, order: draft.images.length }; update({ images: [...draft.images, image] }); } catch { alert('이미지 저장 공간이 부족하거나 IndexedDB를 사용할 수 없습니다.'); }
+  };
+  const remove = async (image: ImageAsset) => { if (image.blobRef) await deleteBlob(image.blobRef); update({ images: draft.images.filter((i) => i.id !== image.id) }); };
+  const downloadPng = () => {
+    if (!svgRef.current) return; const xml = new XMLSerializer().serializeToString(svgRef.current); const img = new Image(); const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml' }));
+    img.onload = () => { const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 630; canvas.getContext('2d')!.drawImage(img, 0, 0, 1200, 630); URL.revokeObjectURL(url); canvas.toBlob((blob) => { if (!blob) return; const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${draft.topic || '블로그'}-인포그래픽.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }, 'image/png'); }; img.src = url;
+  };
+  return <section className="card"><div className="section-head"><div><h2>이미지·인포그래픽</h2><p>AI 사진이 아닌 코드 기반 카드뉴스입니다. 외부 이미지는 자동으로 가져오지 않습니다.</p></div><label className="button secondary">현장 사진 업로드<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => upload(e.target.files)} /></label></div>
+    <div className="infographic-grid"><div className="infographic"><svg ref={svgRef} viewBox="0 0 1200 630" role="img" aria-label={`${draft.topic} 확인 순서 인포그래픽`}><rect width="1200" height="630" rx="32" fill="#f6f3ff"/><circle cx="1050" cy="90" r="150" fill="#dfd9ff"/><text x="80" y="110" fontSize="34" fontWeight="700" fill="#5B4BDB">LANDLANGUAGE CHECK</text><text x="80" y="205" fontSize="62" fontWeight="800" fill="#242334">{(draft.topic || '주제').slice(0, 16)} 확인 순서</text>{['목적과 예산 정리','공적 자료 확인','현장 상태 비교','변동 정보 재확인'].map((t, i) => <g key={t}><circle cx={115 + i * 285} cy="390" r="48" fill="#5B4BDB"/><text x={115 + i * 285} y="407" textAnchor="middle" fontSize="38" fontWeight="700" fill="white">{i + 1}</text><text x={115 + i * 285} y="485" textAnchor="middle" fontSize="26" fontWeight="600" fill="#242334">{t}</text></g>)}<text x="80" y="575" fontSize="24" fill="#5c5a68">수치·정책·권리관계는 정보 기준일과 원문을 확인하세요.</text></svg></div><div><h3>카드뉴스 설명</h3><p>목적·자료·현장·최신 정보 순으로 확인하는 절차를 시각화합니다. 같은 정보가 본문에도 설명되어 접근성을 보완합니다.</p><button onClick={downloadPng}>PNG로 저장</button></div></div>
+    <div className="image-list">{draft.images.map((image, index) => <article className="image-card" key={image.id}>{urls[image.id] && <img src={urls[image.id]} alt={image.alt} />}<label>캡션<input value={image.caption} onChange={(e) => update({ images: draft.images.map((x) => x.id === image.id ? { ...x, caption: e.target.value } : x) })} /></label><div className="row"><button className="small secondary" disabled={!index} onClick={() => { const next = [...draft.images]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; update({ images: next }); }}>앞으로</button><button className="small danger" onClick={() => remove(image)}>삭제</button></div></article>)}</div>
+    <div className="license-links">합법적 이미지 검색: <a href={`https://unsplash.com/s/photos/${encodeURIComponent(draft.topic)}`} target="_blank" rel="noreferrer">Unsplash</a> · <a href={`https://pixabay.com/images/search/${encodeURIComponent(draft.topic)}`} target="_blank" rel="noreferrer">Pixabay</a> · <a href={`https://www.pexels.com/search/${encodeURIComponent(draft.topic)}`} target="_blank" rel="noreferrer">Pexels</a> <small>각 이미지의 실제 라이선스는 저장 전 직접 확인하세요.</small></div>
+  </section>;
+}
