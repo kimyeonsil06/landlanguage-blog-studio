@@ -30,7 +30,7 @@ export function Landing() {
   return <div className="ll-home">
     <header className="ll-header"><div className="ll-bound ll-head-inner"><a className="ll-brand" href="#intro"><span className="ll-mark"><Icon name="layers" size={23}/></span><strong>랜드랭귀지</strong><span>BLOG STUDIO</span></a>
       <nav aria-label="제품 소개" className={mobileMenu?'expanded':''}>{nav.map(([label,id])=><a key={id} href={'#'+id} onClick={()=>setMobileMenu(false)}>{label}</a>)}</nav>
-      <div className="ll-head-actions"><a className="ll-instagram" href="./instagram/" target="_blank" rel="noreferrer" aria-label="인스타그램 카드뉴스 스튜디오 새 창에서 열기"><Icon name="instagram" size={17}/><span>인스타그램</span></a><a className="ll-archive" href="#archive">내 보관함</a><a className="ll-button primary" href="#write">스튜디오 시작하기</a><button className="ll-menu" aria-label="안내 메뉴" aria-expanded={mobileMenu} onClick={()=>setMobileMenu(!mobileMenu)}><Icon name="menu"/></button></div>
+      <div className="ll-head-actions"><a className="ll-archive" href="#archive">내 보관함</a><a className="ll-button primary" href="#write">스튜디오 시작하기</a><button className="ll-menu" aria-label="안내 메뉴" aria-expanded={mobileMenu} onClick={()=>setMobileMenu(!mobileMenu)}><Icon name="menu"/></button></div>
     </div></header>
     <main>
       <section className="ll-hero" id="intro"><div className="ll-bound">

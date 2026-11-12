@@ -17,8 +17,8 @@ export default function App() {
   const [draft, setDraft] = useState<Draft>(loadCurrent);
   const [step,setStep] = useState(draft.article ? 3 : draft.outline.length ? 2 : 1);
   const [route,setRoute] = useState(()=>window.location.hash.slice(1));
-  const page = route==='archive'?'archive':'write';
-  const inStudio = route==='write' || route==='archive';
+  const page = route==='archive'?'archive':route==='cardnews'?'cardnews':'write';
+  const inStudio = route==='write' || route==='archive' || route==='cardnews';
   useEffect(()=>{
     const readLocation=()=>setRoute(window.location.hash.slice(1));
     window.addEventListener('hashchange',readLocation);
@@ -75,7 +75,7 @@ export default function App() {
     finally { setBusy(null); }
   };
   const save = () => setMessage(saveArchive(draft)?'보관함에 저장했습니다.':'보관함에 저장할 수 없습니다. 파일로 내보내세요.');
-  const navigate = (p:'write'|'archive') => {window.location.hash=p; setSidebar(false); window.scrollTo(0,0);};
+  const navigate = (p:'write'|'archive'|'cardnews') => {window.location.hash=p; setSidebar(false); window.scrollTo(0,0);};
   const newDraft = () => {
     if ((draft.topic || draft.article) && !confirm('현재 원고를 닫고 새 글을 시작할까요? 보관할 원고는 보관함에 먼저 저장하세요.')) return;
     setDraft({...createDraft(), theme:draft.theme,author:draft.author,officeProfile:draft.officeProfile});
@@ -92,14 +92,15 @@ export default function App() {
         <div className="nav-label second-label">도구</div>
         <a href="https://help.naver.com/service/5593/contents/10582" target="_blank" rel="noreferrer"><Icon name="book"/> 검색 노출 가이드 <Icon name="upRight" size={13}/></a>
         <button onClick={()=>{setSettings(true);setSidebar(false);}}><Icon name="settings"/> 스튜디오 설정</button>
+        <button className={'cardnews-nav '+(page==='cardnews'?'active':'')} onClick={()=>navigate('cardnews')}><Icon name="instagram"/> 카드뉴스 생성기</button>
       </nav>
       <div className="office-id"><span className="office-icon"><Icon name="home"/></span><div><b>태왕아너스부동산</b><small>개인 워크스페이스</small></div></div>
     </aside>
     {sidebar && <div className="sidebar-scrim" onClick={()=>setSidebar(false)}/>}
     <div className="main-area"><header className="topbar">
       <button className="mobile-only icon-btn" aria-label="메뉴 열기" onClick={()=>setSidebar(true)}><Icon name="menu"/></button>
-      <div className="crumb"><Icon name="grid" size={16}/><span>워크스페이스</span><Icon name="chevron" size={12}/><strong>{page==='write'?'포스팅 작성':'내 보관함'}</strong></div>
-      <div className="top-actions"><a className="instagram-shortcut" href="./instagram/" target="_blank" rel="noreferrer" aria-label="인스타그램 카드뉴스 스튜디오 새 창에서 열기"><Icon name="instagram" size={16}/><span>인스타그램</span></a><button className="icon-btn" onClick={()=>update({theme:draft.theme==='light'?'dark':'light'})} aria-label="테마 전환"><Icon name="moon"/></button><button className="secondary new-post" onClick={newDraft}><Icon name="plus" size={15}/>새 글</button></div>
+      <div className="crumb"><Icon name="grid" size={16}/><span>워크스페이스</span><Icon name="chevron" size={12}/><strong>{page==='write'?'포스팅 작성':page==='archive'?'내 보관함':'카드뉴스 생성기'}</strong></div>
+      <div className="top-actions"><button className="icon-btn" onClick={()=>update({theme:draft.theme==='light'?'dark':'light'})} aria-label="테마 전환"><Icon name="moon"/></button><button className="secondary new-post" onClick={newDraft}><Icon name="plus" size={15}/>새 글</button></div>
     </header>
     {page==='write' ? <main className="workspace">
       <section className="workspace-title"><div><small>LANDLANGUAGE BLOG STUDIO</small><h1>부동산 포스팅 스튜디오</h1><p>주제를 정하고, 자료와 현장 경험을 담은 원고를 작성하세요.</p></div></section>
@@ -112,7 +113,7 @@ export default function App() {
       {step===2 && <button onClick={next}>본문 작성으로 <Icon name="arrow" size={16}/></button>}
       {step===3 && <button className="secondary" onClick={()=>{if(!draft.article || confirm('현재 본문을 로컬 템플릿으로 교체할까요?')) update({article:localArticle(draft)});}}>템플릿으로 다시 작성</button>}
       <button className="save studio-save" onClick={save}><Icon name="archive" size={16}/> 보관함에 저장</button></div></div>
-    </main> : <Archive onLoad={item=>{setDraft(item); navigate('write');go(item.article?3:item.outline.length?2:1);}}/>}</div>
+    </main> : page==='archive' ? <Archive onLoad={item=>{setDraft(item); navigate('write');go(item.article?3:item.outline.length?2:1);}}/> : <main className="cardnews-page"><iframe className="cardnews-frame" src="./instagram/" title="인스타그램 카드뉴스 생성기"/></main>}</div>
     {message && <div className="toast" role="status">{message}</div>}
     {busy && <div className="modal-backdrop"><section className="modal generate-progress" role="dialog" aria-modal="true"><Icon name="spark" size={30}/><h2>초안을 작성하고 있습니다</h2><p>제목과 본문을 구성하고 품질 항목을 점검합니다.</p><button className="secondary" onClick={()=>busy.abort()}>생성 취소</button></section></div>}
     {aiTask && <AiDialog task={aiTask} draft={draft} onClose={()=>setAiTask(null)} onApply={setDraft}/>}
