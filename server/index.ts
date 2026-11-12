@@ -11,6 +11,11 @@ import { getNews } from './services/news.js';
 const app = express(); const host = '127.0.0.1'; const port = Number(process.env.PORT || 8787);
 app.disable('x-powered-by');
 app.use(cors({ origin: ['http://127.0.0.1:5173', 'http://localhost:5173', 'http://127.0.0.1:4173', 'http://localhost:4173'], methods: ['GET', 'POST'] }));
+app.use('/api', (req,res,next) => {
+  const allowedOrigins = ['http://127.0.0.1:5173','http://localhost:5173','http://127.0.0.1:'+port,'http://localhost:'+port,'http://127.0.0.1:4173','http://localhost:4173'];
+  if (!['127.0.0.1','localhost'].includes(req.hostname) || (req.headers.origin && !allowedOrigins.includes(req.headers.origin))) return res.status(403).json({error:'로컬 스튜디오에서 요청해 주세요.'});
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
 
 const hits = new Map<string, { count: number; reset: number }>();
@@ -30,11 +35,15 @@ app.post('/api/ai/:task', async (req, res) => {
   const taskResult = taskSchema.safeParse(req.params.task); const input = aiRequestSchema.safeParse(req.body);
   if (!taskResult.success || !input.success) return res.status(400).json({ error: '입력 형식 또는 크기를 확인해 주세요.' });
   const task = taskResult.data; const prompt = buildPrompt(task, input.data.draft);
-  const providerId = (process.env.AI_PROVIDER && process.env.AI_PROVIDER in providers ? process.env.AI_PROVIDER : 'prompt-only') as keyof typeof providers;
+  const providerId = input.data.provider ?? ((process.env.AI_PROVIDER && process.env.AI_PROVIDER in providers ? process.env.AI_PROVIDER : 'prompt-only') as keyof typeof providers);
   const provider = providers[providerId]; const status = await provider.status();
   if (!status.available || providerId === 'prompt-only') return res.json({ mode: 'prompt-only', prompt, provider: providerId });
-  try { const result = await provider.run(task, prompt); res.json({ mode: 'automatic', prompt, result, provider: providerId }); }
+  const controller = new AbortController();
+  res.once('close',()=>controller.abort());
+  const timer = setTimeout(()=>controller.abort(),120000);
+  try { const result = await provider.run(task, prompt, controller.signal); res.json({ mode: 'automatic', prompt, result, provider: providerId }); }
   catch (error) { res.status(502).json({ error: error instanceof Error ? error.message : 'AI 실행 실패', fallbackPrompt: prompt }); }
+  finally { clearTimeout(timer); }
 });
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

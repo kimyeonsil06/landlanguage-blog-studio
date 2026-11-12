@@ -32,7 +32,7 @@ export interface Draft {
   audience: string; keywords: string[]; emphasis: string[]; tone: Tone;
   experienceMemo: string; sources: Source[]; informationDate: string;
   targetLength: number; officeProfile: OfficeProfile; outline: OutlineSection[];
-  article: string; images: ImageAsset[]; evaluation?: Evaluation; status: DraftStatus;
+  article: string; metaDescription?: string; images: ImageAsset[]; evaluation?: Evaluation; status: DraftStatus;
   theme: 'light' | 'dark'; latestSearch: boolean; advertisingDisclosure: string;
 }
 export interface ProviderStatus {

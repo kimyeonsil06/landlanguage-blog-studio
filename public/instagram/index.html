@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="주제 한 줄로 인스타그램 카드뉴스 초안을 만들고 편집해 PNG로 저장하세요." />
+    <title>카도리 — 인스타그램 카드뉴스 스튜디오</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="카도리 홈">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>카도리</span>
+      </a>
+      <div class="top-actions">
+        <span class="save-state"><i></i> 브라우저에 자동 저장</span>
+        <button class="button button-dark" id="downloadAllTop" type="button">전체 PNG 저장 <span>↓</span></button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar" aria-label="카드뉴스 설정">
+        <div class="step-kicker">01 · 콘텐츠 설정</div>
+        <h1>어떤 이야기를<br />카드로 만들까요?</h1>
+        <p class="intro">한 줄이면 충분해요. 인스타그램에 맞는 표지부터 CTA까지 초안을 구성해 드려요.</p>
+
+        <form id="generatorForm">
+          <label class="field-label" for="topic">주제</label>
+          <div class="topic-field">
+            <textarea id="topic" maxlength="80" rows="3" placeholder="예: 아침 루틴이 하루를 바꾸는 이유" required></textarea>
+            <span id="topicCount">0/80</span>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              <span class="field-label">말투</span>
+              <select id="tone">
+                <option value="friendly">친근하고 쉽게</option>
+                <option value="expert">전문적이고 명확하게</option>
+                <option value="witty">재치 있고 발랄하게</option>
+                <option value="calm">차분하고 따뜻하게</option>
+              </select>
+            </label>
+            <label>
+              <span class="field-label">카드 수</span>
+              <select id="cardCount">
+                <option value="5">5장</option>
+                <option value="6" selected>6장</option>
+                <option value="7">7장</option>
+                <option value="8">8장</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field-label" for="audience">누가 읽나요? <em>선택</em></label>
+          <input id="audience" type="text" maxlength="36" placeholder="예: 이제 막 일을 시작한 20대" />
+
+          <button class="generate-button" type="submit">
+            <span class="spark" aria-hidden="true">✦</span>
+            카드뉴스 초안 만들기
+            <span class="arrow" aria-hidden="true">→</span>
+          </button>
+        </form>
+
+        <div class="tip-box">
+          <b>잘 만드는 작은 팁</b>
+          <p>구체적인 독자를 적으면 제목과 예시가 더 선명해져요.</p>
+        </div>
+      </aside>
+
+      <section class="studio" aria-label="카드뉴스 편집기">
+        <div class="studio-head">
+          <div>
+            <span class="eyebrow">INSTAGRAM · 4:5</span>
+            <h2 id="projectTitle">나의 카드뉴스</h2>
+          </div>
+          <div class="style-switcher" aria-label="스타일 선택">
+            <span>스타일</span>
+            <button class="swatch is-active" data-theme="sunny" aria-label="선샤인" title="선샤인"><i></i></button>
+            <button class="swatch" data-theme="mint" aria-label="민트" title="민트"><i></i></button>
+            <button class="swatch" data-theme="berry" aria-label="베리" title="베리"><i></i></button>
+            <button class="swatch" data-theme="mono" aria-label="모노" title="모노"><i></i></button>
+          </div>
+        </div>
+
+        <div class="stage-shell">
+          <button class="nav-button prev" id="prevCard" aria-label="이전 카드">←</button>
+          <div class="card-stage theme-sunny" id="cardStage">
+            <div class="decor decor-one"></div>
+            <div class="decor decor-two"></div>
+            <div class="card-meta">
+              <span class="card-label" id="cardLabel">COVER STORY</span>
+              <span class="card-number" id="cardNumber">01 / 06</span>
+            </div>
+            <div class="card-copy">
+              <h3 id="cardTitle" contenteditable="true" spellcheck="false">주제를 입력하면<br />이곳에 표지가 만들어져요</h3>
+              <p id="cardBody" contenteditable="true" spellcheck="false">왼쪽에서 주제와 말투를 선택하고 초안 만들기를 눌러보세요.</p>
+            </div>
+            <div class="card-footer">
+              <span id="cardHandle">@cardory.studio</span>
+              <span class="mini-arrow">↗</span>
+            </div>
+          </div>
+          <button class="nav-button next" id="nextCard" aria-label="다음 카드">→</button>
+        </div>
+
+        <div class="edit-hint"><span>✎</span> 카드의 제목과 본문을 눌러 바로 수정할 수 있어요</div>
+
+        <div class="timeline-head">
+          <div><b>카드 구성</b> <span id="cardTotal">6장</span></div>
+          <button class="text-button" id="downloadCurrent" type="button">현재 카드 PNG <span>↓</span></button>
+        </div>
+        <div class="timeline" id="timeline" aria-label="카드 목록"></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

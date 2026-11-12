@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { buildBrowserPrompt } from '../lib/browserPrompt';
 import { api } from '../lib/api';
 import { newId } from '../lib/draft';
 import type { AITask, Draft, Evaluation } from '../types';
@@ -9,11 +10,12 @@ export function AiDialog({ task, draft, onClose, onApply }: Props) {
   const [status, setStatus] = useState('프롬프트를 준비하는 중입니다…'); const [busy, setBusy] = useState(false);
   const [controller, setController] = useState<AbortController | null>(null);
   useEffect(() => {
-    if (!task) return; const abort = new AbortController(); setController(abort); setBusy(true);
+    if (!task) return; const abort = new AbortController(); setController(abort); setBusy(true); setPrompt(buildBrowserPrompt(task,draft));
     api.ai(task, draft, abort.signal).then((data) => {
+      if(abort.signal.aborted) return;
       setPrompt(data.prompt); setStatus(data.mode === 'automatic' ? `${data.provider}에서 결과를 받았습니다.` : '프롬프트를 복사해 외부 AI에서 실행한 뒤 결과를 붙여넣으세요.');
       if (data.result) { setPasted(JSON.stringify(data.result, null, 2)); }
-    }).catch((e) => setStatus(e.message)).finally(() => setBusy(false));
+    }).catch((e) => {if(!abort.signal.aborted) setStatus(e.message+' 아래 프롬프트로 계속 작성할 수 있습니다.');}).finally(() => {if(!abort.signal.aborted) setBusy(false);});
     return () => abort.abort();
   }, [task]);
   if (!task) return null;
@@ -31,8 +33,9 @@ export function AiDialog({ task, draft, onClose, onApply }: Props) {
         next.outline = (value.sections || []).map((s: any, order: number) => ({ id: newId(), type: String(s.type || 'body'), heading: String(s.heading || `항목 ${order + 1}`), notes: String(s.notes || ''), order, sourceIds: Array.isArray(s.sourceIds) ? s.sourceIds.map(String) : [], imageIdeas: Array.isArray(s.imageIdeas) ? s.imageIdeas : [] }));
         if (!next.outline.length) throw new Error('sections 배열이 비어 있습니다.');
       }
-      if (task === 'generateArticle' || task === 'reviseArticle') { if (!value.article) throw new Error('article 값이 없습니다.'); next.article = String(value.article); }
+      if (task === 'generateArticle' || task === 'reviseArticle') { if (typeof value.article !== 'string' || !value.article.trim()) throw new Error('article 값이 없습니다.'); next.article = value.article; next.evaluation = undefined; if(typeof value.metaDescription === 'string') next.metaDescription = value.metaDescription.slice(0,160); }
       if (task === 'evaluateArticle') next.evaluation = validateEvaluation(value);
+      if(draft.article && next.article !== draft.article && !confirm('현재 본문을 생성 결과로 교체할까요?')) return;
       onApply(next); onClose();
     } catch (e) { setStatus(`적용 실패: ${e instanceof Error ? e.message : '결과 형식을 확인하세요.'}`); }
   };
@@ -41,7 +44,7 @@ export function AiDialog({ task, draft, onClose, onApply }: Props) {
       <div className="modal-head"><div><span className="eyebrow">AI 연결 또는 수동 실행</span><h2 id="ai-title">{taskLabel[task]}</h2></div><button className="icon-btn" onClick={onClose} aria-label="닫기">×</button></div>
       <div className={`notice ${status.startsWith('적용 실패') ? 'error' : ''}`}>{status}</div>
       <label>실행 프롬프트<textarea className="prompt-box" value={prompt} readOnly rows={10} /></label>
-      <div className="row wrap"><button onClick={() => navigator.clipboard.writeText(prompt)} disabled={!prompt}>프롬프트 복사</button>{busy && <button className="secondary" onClick={() => controller?.abort()}>생성 취소</button>}</div>
+      <div className="row wrap"><button onClick={() => navigator.clipboard.writeText(prompt)} disabled={!prompt}>프롬프트 복사</button>{busy && <button className="secondary" onClick={() => {controller?.abort();setBusy(false);setStatus('생성을 취소했습니다. 프롬프트를 복사해 계속할 수 있습니다.');}}>생성 취소</button>}</div>
       <label>외부 AI 결과 붙여넣기<textarea value={pasted} onChange={(e) => setPasted(e.target.value)} rows={10} placeholder={task.includes('Article') ? 'JSON 또는 본문 텍스트를 붙여넣으세요.' : 'JSON 결과를 붙여넣으세요.'} /></label>
       <div className="modal-actions"><button className="secondary" onClick={onClose}>닫기</button><button onClick={apply} disabled={!pasted.trim()}>검증 후 적용</button></div>
     </section>

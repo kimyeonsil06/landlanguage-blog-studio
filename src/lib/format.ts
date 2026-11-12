@@ -1,4 +1,4 @@
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
+export const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
 
 function inline(value: string) {
   return escapeHtml(value).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" rel="noopener noreferrer" style="color:#5B4BDB;text-decoration:underline">$1</a>');

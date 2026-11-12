@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import type { AITask, AIProviderId, ProviderStatus } from '../../src/types.js';
 
@@ -29,8 +32,10 @@ export class CodexCliProvider implements AIProvider {
     return { id: this.id, name: '로컬 Codex CLI', available: installed, reason: installed ? 'CLI 설치됨. 실제 로그인·사용 한도는 실행 시 확인합니다.' : 'codex CLI를 찾지 못했습니다.', needsApiKey: false, localOnly: true };
   }
   async run(_task: AITask, prompt: string, signal?: AbortSignal): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      const child = spawn('codex', ['exec', '--sandbox', 'read-only', '-'], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
+    const cwd = await mkdtemp(join(tmpdir(),'blog-studio-cli-'));
+    try {return await new Promise((resolve, reject) => {
+      signal?.throwIfAborted();
+      const child = spawn('codex', ['exec','--skip-git-repo-check','--ephemeral','--sandbox','read-only','-'], { cwd, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
       let stdout = ''; let stderr = ''; let size = 0; let settled = false;
       const finish = (error?: Error, value?: unknown) => { if (settled) return; settled = true; clearTimeout(timer); error ? reject(error) : resolve(value); };
       const timer = setTimeout(() => { child.kill(); finish(new Error('Codex CLI 호출이 90초를 초과해 중단되었습니다.')); }, 90000);
@@ -38,9 +43,10 @@ export class CodexCliProvider implements AIProvider {
       child.stdout.on('data', (chunk) => { size += chunk.length; if (size > 2_000_000) { child.kill(); finish(new Error('AI 출력이 허용 크기를 초과했습니다.')); } else stdout += chunk.toString(); });
       child.stderr.on('data', (chunk) => { if (stderr.length < 4000) stderr += chunk.toString(); });
       child.on('error', () => finish(new Error('Codex CLI 실행에 실패했습니다. 설치 및 codex login 상태를 확인하세요.')));
-      child.on('exit', (code) => { if (code !== 0) finish(new Error(`Codex CLI가 완료되지 않았습니다. 로그인·플랜·한도를 확인하세요. ${stderr.slice(-500)}`)); else { try { finish(undefined, parseJson(stdout)); } catch (e) { finish(e as Error); } } });
+      child.on('exit', (code) => { if (code !== 0) finish(new Error(`Codex CLI가 완료되지 않았습니다. 로그인·플랜·한도를 확인하세요.`)); else { try { finish(undefined, parseJson(stdout)); } catch (e) { finish(e as Error); } } });
+      child.stdin.on('error', () => finish(new Error('CLI 입력을 전달할 수 없습니다.')));
       child.stdin.end(prompt);
-    });
+    });} finally {await rm(cwd,{recursive:true,force:true});}
   }
 }
 

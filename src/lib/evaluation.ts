@@ -1,7 +1,7 @@
 import type { Draft, Evaluation, EvaluationItem } from '../types';
 import { incompleteCount } from './metrics';
 
-const CRITERIA: Array<[string, number]> = [
+export const CRITERIA: Array<[string, number]> = [
   ['검색 의도 및 독자 목적', 15], ['정보 정확성·출처', 15], ['전문성·경험·독창성', 20],
   ['심층분석·비교·실용성', 15], ['제목·구조·가독성', 10], ['주제 일관성·키워드', 10],
   ['최신성 및 기준일', 5], ['이미지·표·영상 적절성', 5], ['진정성·스팸 위험 관리', 5]

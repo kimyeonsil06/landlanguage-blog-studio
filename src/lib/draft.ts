@@ -22,41 +22,72 @@ export function createDraft(): Draft {
 }
 
 export function localTitles(draft: Draft): string[] {
-  const key = draft.keywords[0] || draft.topic;
+  const key = draft.keywords.find(k => k.trim() && !draft.topic.includes(k));
   return [
-    `${key} ${draft.topic}, 먼저 확인할 핵심 기준`,
-    `${draft.topic} 선택 전 알아둘 장점과 주의점`,
-    `${key} 관점에서 살펴본 ${draft.topic} 체크리스트`
-  ].map((title) => title.slice(0, 50));
+    `${draft.topic}, 먼저 확인할 세 가지`,
+    `${draft.audience}를 위한 ${draft.topic}${draft.topic.endsWith('체크리스트') ? '' : ' 체크리스트'}`,
+    key ? `${draft.topic}, ${key}까지 살펴보는 방법` : `${draft.topic}에 관해 자주 묻는 질문`
+  ].map(title => title.slice(0,50));
 }
 
-export function localOutline(draft: Draft): OutlineSection[] {
-  const section = (type: string, heading: string, notes: string, order: number): OutlineSection => ({
-    id: newId(), type, heading, notes, order, sourceIds: [],
-    imageIdeas: [{ caption: `${heading}의 핵심 내용을 한눈에 정리`, query: `${draft.topic} ${heading}`, directPhoto: order === 3 }]
-  });
+function topicNotes(topic:string) {
+  if (/전세|임대차|보증금/.test(topic)) return [
+    ['계약 전에 준비할 자료','계약하려는 집의 정확한 주소와 호수를 기록합니다. 계약 당사자, 서류에 적힌 소유자, 실제 방문한 주택이 일치하는지 각각 살펴봅니다.'],
+    ['보증금과 지급 일정','보증금 외에 계약을 진행하며 지출할 비용을 따로 적습니다. 계약금과 잔금을 지급할 날짜를 자기 자금이 준비되는 시점과 나란히 놓고 비교합니다.'],
+    ['서면으로 남길 질문','수선할 곳, 입주 가능한 날짜, 포함되는 시설을 질문 목록에 적습니다. 현장에서 들은 설명은 계약서에 어떻게 반영되는지 확인합니다.']
+  ];
+  if (/실거래|매매가|시세/.test(topic)) return [
+    ['비교 조건 좁히기','지역과 단지 이름을 정한 뒤 전용면적, 층, 계약 시기를 함께 기록합니다. 조건이 다른 주택은 별도 행에 적어 비교합니다.'],
+    ['호가와 거래 기록 구분','매물에 표시된 희망 가격과 신고된 거래 금액을 구분합니다. 거래 기록을 인용할 때는 조회한 날짜와 원문에서 확인한 거래 상태를 함께 적습니다.'],
+    ['숫자에 담기지 않은 차이','같은 단지에서도 향, 내부 수선 상태, 조망이 다를 수 있습니다. 가격 차이를 한 가지 원인으로 해석하기 전에 실제 매물 조건을 확인합니다.']
+  ];
+  if (/임장|아파트|생활권|답사/.test(topic)) return [
+    ['방문 전 동선 정하기','평일에 자주 이용할 목적지부터 정합니다. 단지 입구에서 정류장이나 학교까지 직접 걸어볼 경로를 지도에 표시합니다.'],
+    ['집 안과 공용부 살펴보기','창문을 열고 닫아 소음 차이를 들어봅니다. 현관부터 승강기까지 이동하며 채광, 계단, 주차장 접근성을 각각 기록합니다.'],
+    ['후보를 같은 조건에서 비교하기','방문 시간과 날씨를 함께 기록합니다. 한낮과 퇴근 시간의 차이가 궁금한 곳은 다시 찾아가 같은 지점에서 관찰합니다.']
+  ];
   return [
-    section('intro', '도입부 요지', `${draft.audience} 독자가 ${draft.topic}을 검토할 때 얻을 판단 기준을 안내합니다.`, 0),
-    section('toc', '목차', '핵심 개념 → 확인 기준 → 대안 비교 → 실행 절차 순서', 1),
-    section('body', `■ 1. ${draft.topic}을 볼 때 먼저 확인할 점`, '정의와 범위를 설명하고, 변동 가능한 내용은 출처와 기준일을 연결합니다.', 2),
-    section('body', '■ 2. 현장에서 확인할 체크리스트', draft.experienceMemo || '[작성자 경험 입력: 현장 방문일·관찰사항·고객 질문 등]', 3),
-    section('body', '■ 3. 대안별 장단점과 주의사항', '검증된 정보만으로 비교하며 수치가 없으면 [확인 필요]로 표시합니다.', 4),
-    section('guide', '■ 4. 상담 전 준비할 단계', '예산·입주시점·생활권·권리관계를 순서대로 확인합니다.', 5),
-    section('conclusion', '결론과 생각할 거리', '독자 상황에 따른 선택 기준을 요약합니다.', 6),
-    section('cta', '다음 행동 제안', '과도한 광고 없이 자료 확인 또는 전문가 상담을 권합니다.', 7)
+    [topic+'의 적용 범위','먼저 대상 지역과 확인하려는 시점을 적습니다. 같은 명칭이라도 적용 대상이 달라질 수 있으므로 원문에서 대상과 예외를 함께 확인합니다.'],
+    ['자료에서 확인할 항목','발표일과 실제 적용일을 구분해서 기록합니다. 여러 자료의 설명이 다르면 대상 지역과 조사 기간을 나누어 살펴봅니다.'],
+    ['내 상황에 적용할 질문','내가 꼭 충족해야 하는 조건을 먼저 적습니다. 자료만으로 판단하기 어려운 점은 질문 목록으로 옮겨 현장이나 해당 기관에 확인합니다.']
   ];
 }
 
-export function localArticle(draft: Draft): string {
-  const date = draft.informationDate.replaceAll('-', '.');
-  const title = draft.title || draft.titles[0] || draft.topic;
-  const experience = draft.experienceMemo.trim()
-    ? `제공해 주신 현장 메모를 기준으로 보면 다음과 같습니다.\n${draft.experienceMemo.trim()}`
-    : '[작성자 경험 입력: 현장 방문일·관찰사항·고객 질문 등]';
-  const refs = draft.sources.length
-    ? draft.sources.map((s, i) => `${i + 1}. ${s.organization || s.title} (${s.publishedAt || '발표일 확인 필요'}) ${s.url || '[원문 링크 확인 필요]'}`).join('\n')
-    : '[확인 필요: 활용할 공식 자료 또는 원문 링크]';
-  const office = draft.officeProfile.display === '하단' && Object.values(draft.officeProfile).some(Boolean)
-    ? `\n■ 중개사무소 안내\n상호: ${draft.officeProfile.businessName || '[확인 필요]'}\n주소: ${draft.officeProfile.address || '[확인 필요]'}\n대표: ${draft.officeProfile.representative || '[확인 필요]'}\n전화: ${draft.officeProfile.phone || '[확인 필요]'}\n등록번호: ${draft.officeProfile.registrationNumber || '[확인 필요]'}` : '';
-  return `정보 기준일: ${date}\n\n${title}\n\n${draft.audience} 관점에서 ${draft.topic}을 검토할 때 무엇을 먼저 확인해야 하는지 정리했습니다. 이 글은 입력한 자료와 기준일을 바탕으로 판단 순서를 안내하며, 확인되지 않은 사실은 별도로 표시합니다.\n\n■ 1. ${draft.topic}을 이해하는 기준\n\n같은 조건처럼 보여도 위치, 사용승인 시점, 관리 상태, 자금 계획에 따라 판단이 달라질 수 있습니다. 먼저 본인의 목적과 입주 시점을 구체화해야 합니다.\n\n${draft.emphasis.length ? `특히 살펴볼 내용은 ${draft.emphasis.join(', ')}입니다.` : '강조할 세부 내용은 작성자가 직접 보완해 주세요.'}\n\n[이미지 1: ${draft.topic} 확인 기준을 정리한 카드뉴스]\n\n■ 2. 현장에서 확인할 체크리스트\n\n${experience}\n\n- 공용부와 전용부의 관리 상태를 나누어 확인합니다.\n- 등기·건축물대장 등 권리 및 공적 자료는 최신 발급본으로 확인합니다.\n- 가격·세금·대출 조건은 계약 시점과 개인 조건에 따라 달라질 수 있습니다.\n\n■ 3. 대안 비교표\n\n| 선택지 | 장점 | 확인할 위험 | 어울리는 상황 |\n| 구축 | 생활 인프라를 직접 확인하기 쉬움 | 수선 범위·관리 상태 [확인 필요] | 입지와 현재 생활권을 중시할 때 |\n| 신축 | 새 설비와 평면 선택 가능성 | 분양 조건·입주시점 [확인 필요] | 초기 관리 편의성을 중시할 때 |\n| 다른 생활권 | 예산 대안 탐색 가능 | 통근·교육·생활 변화 [확인 필요] | 선택 범위를 넓힐 수 있을 때 |\n\n표의 수치와 개별 단지 사실은 입력 자료만으로 확인되지 않았습니다. 실제 검토 시 대상 단지와 공식 자료를 기준으로 다시 비교해야 합니다.\n\n■ 4. 상황별 판단 기준\n\n- 실거주: 통근, 돌봄, 생활 편의, 실제 수선 부담의 우선순위를 정합니다.\n- 투자 검토: 보유 기간과 자금 조달 위험을 먼저 점검하고, 수익을 단정하지 않습니다.\n- 단기 자금 수요: 처분 기간과 거래 비용을 보수적으로 검토합니다.\n\n■ 5. 상담 전 준비 순서\n\n1. 예산과 필요 시점을 적습니다.\n2. 후보별 공적 자료와 현장 상태를 확인합니다.\n3. 변동 가능한 세금·대출·정책은 기준일에 맞춰 재확인합니다.\n4. 장점뿐 아니라 포기해야 할 조건도 함께 비교합니다.\n\n■ 결론\n\n${draft.topic}은 한 가지 수치만으로 결정하기 어렵습니다. 본인의 생활 조건과 자금 계획을 먼저 정하고, 확인 가능한 자료와 현장 관찰을 함께 놓고 판단하는 것이 안전합니다.\n\n■ 자주 묻는 질문\n\nQ1. ${draft.topic}은 무엇부터 확인해야 하나요?\n목적과 예산, 입주 시점을 먼저 정한 뒤 공적 자료와 현장 상태를 확인해야 합니다. 변동 가능한 조건은 정보 기준일에 맞춰 다시 점검합니다.\n\nQ2. 온라인 정보만으로 결정해도 되나요?\n온라인 자료는 후보를 좁히는 데 유용하지만 실제 상태와 권리관계를 모두 대신하지는 못합니다. 원문 출처와 현장을 함께 확인하는 편이 안전합니다.\n\nQ3. 상담 전에 무엇을 준비하면 좋나요?\n예산 범위, 희망 시점, 우선 생활권, 포기하기 어려운 조건을 적어 두면 좋습니다. 확인하고 싶은 질문도 목록으로 만들면 상담 시간을 효율적으로 쓸 수 있습니다.\n\n■ 참고 자료\n${refs}${office}`;
+export function localOutline(draft:Draft): OutlineSection[] {
+  const section = (type:string, heading:string, notes:string, order:number):OutlineSection => ({
+    id:newId(),type,heading,notes,order,sourceIds:[],
+    imageIdeas:[{caption:heading+' 확인 항목',query:draft.topic+' '+heading,directPhoto:type==='body'}]
+  });
+  return [
+    section('intro','도입',`${draft.audience} 관점에서 살펴볼 주제는 ‘${draft.topic}’입니다. 필요한 자료와 확인 순서를 정리했습니다.`,0),
+    section('toc','목차','본문에서 확인할 내용',1),
+    ...topicNotes(draft.topic).map(([heading,notes],i)=>section('body',heading,notes,i+2)),
+    section('guide','현장에서 확인한 내용',draft.experienceMemo.trim() || '[작성자 경험 입력: 방문 날짜와 직접 확인한 사실]',5),
+    section('conclusion','결정 전 점검',draft.emphasis.filter(Boolean).join('\n') || '지금 확인한 점과 추가로 확인할 점을 구분해 기록합니다.',6),
+    section('cta','다음 단계','비교 중인 후보마다 궁금한 점을 한 가지씩 적어 다음 방문이나 상담 때 확인해 보세요.',7)
+  ];
+}
+
+export function localArticle(draft:Draft):string {
+  const sections = draft.outline.length ? draft.outline : localOutline(draft);
+  const parts = ['정보 기준일: '+draft.informationDate.replaceAll('-','.'),draft.title || draft.titles[0] || draft.topic];
+  const office = draft.officeProfile;
+  const profile = [office.businessName,office.representative,office.address,office.phone,office.registrationNumber].filter(Boolean).join(' · ');
+  if(draft.advertisingDisclosure) parts.push(draft.advertisingDisclosure);
+  if(profile && office.display==='상단') parts.push(profile);
+  for(const section of sections) {
+    const references = draft.sources.filter(s=>section.sourceIds.includes(s.id)).map(s=>[s.organization,s.publishedAt,s.url].filter(Boolean).join(' '));
+    parts.push('■ '+section.heading.replace(/^■\s*/, ''),section.notes);
+    if(section.type==='toc') parts.push(sections.filter(s=>s.type==='body').map(s=>'- '+s.heading).join('\n'));
+    if(references.length) parts.push(references.join('\n'));
+  }
+  if(draft.experienceMemo && !sections.some(s=>s.notes.includes(draft.experienceMemo))) parts.push('■ 직접 확인한 내용',draft.experienceMemo);
+  if(draft.emphasis.some(Boolean) && !sections.some(s=>s.notes===draft.emphasis.filter(Boolean).join('\n'))) parts.push('■ 중점 확인 항목',draft.emphasis.filter(Boolean).map(v=>'- '+v).join('\n'));
+  parts.push('■ 자료 비교표','| 선택지 | 확인 방법 | 기록할 항목 |\n| 자료 조사 | 원문에서 범위와 기준일 확인 | 출처, 발표일, 적용 대상 |\n| 현장 방문 | 같은 질문으로 후보별 점검 | 방문 시점, 직접 관찰한 차이 |');
+  parts.push('■ 자주 묻는 질문',topicNotes(draft.topic).map(([head,answer],i)=>`Q${i+1}. ${head}에서 무엇을 살펴보나요?\n${answer.split('. ')[0].replace(/\.$/,'')}.`).join('\n\n'));
+  parts.push('■ 참고 자료',draft.sources.length ? draft.sources.map(s=>[s.title,s.organization,s.publishedAt,s.url].filter(Boolean).join(' · ') || '[확인 필요: 출처 정보]').join('\n') : '[확인 필요: 인용할 자료의 발표일과 원문 링크]');
+  if(draft.images.length) parts.push(...draft.images.map((image,i)=>`[이미지 ${i+1}: ${image.caption || image.alt}]`));
+  if(profile && office.display==='하단') parts.push('■ 중개사무소 안내',profile);
+  if(draft.author) parts.push('작성자 '+draft.author);
+  return parts.filter(Boolean).join('\n\n');
 }

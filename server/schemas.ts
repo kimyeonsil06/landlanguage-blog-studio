@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const taskNames = ['suggestKeywords', 'suggestEmphasis', 'generateTitles', 'generateOutline', 'generateArticle', 'evaluateArticle', 'reviseArticle'] as const;
 export const taskSchema = z.enum(taskNames);
 export const aiRequestSchema = z.object({
+  provider: z.enum(['codex-cli','openai','anthropic','prompt-only']).optional(),
   draft: z.object({
     author: z.string().max(100), topic: z.string().min(1).max(100), title: z.string().max(150),
     titles: z.array(z.string()).max(10), audience: z.string().max(100), keywords: z.array(z.string().max(60)).max(10),
